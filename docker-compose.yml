@@ -29,6 +29,27 @@ services:
     volumes:
       - ./migrations:/migrations
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: avito-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:-avito}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-avito}
+      DB_NAME: ${POSTGRES_DB:-pr_reviewer}
+      DB_SSLMODE: disable
+    restart: unless-stopped
+
 volumes:
   postgres_data:
 
