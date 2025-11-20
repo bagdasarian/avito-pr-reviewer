@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:17.7
+    container_name: avito-postgres
+    environment:
+      POSTGRES_USER: avito
+      POSTGRES_PASSWORD: avito
+      POSTGRES_DB: pr_reviewer
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avito -d pr_reviewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    image: migrate/migrate:latest
+    container_name: avito-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://avito:avito@postgres:5432/pr_reviewer?sslmode=disable"
+      - "up"
+    volumes:
+      - ./migrations:/migrations
+
+volumes:
+  postgres_data:
