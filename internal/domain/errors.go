@@ -11,7 +11,6 @@ func (e *DomainError) Error() string {
 	return e.Message
 }
 
-// Это позволяет использовать errors.Is()
 func (e *DomainError) Is(target error) bool {
 	if t, ok := target.(*DomainError); ok {
 		return e.Code == t.Code
