@@ -60,10 +60,16 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return errors.New("author not found")
 	}
 
-	// Создаем PR (updated_at не устанавливаем при создании, остается NULL)
+	// Парсим указанный ID из pr.ID (например "pr-1003" -> 1003)
+	prDBID, err := prStringIDToInt(pr.ID)
+	if err != nil {
+		return errors.New("invalid pull request ID")
+	}
+
+	// Создаем PR с указанным ID (updated_at не устанавливаем при создании, остается NULL)
 	query := `
-		INSERT INTO pull_requests (title, author_id, status_id, created_at)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO pull_requests (id, title, author_id, status_id, created_at)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -72,6 +78,7 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 	var updatedAt sql.NullTime
 	err = tx.QueryRow(
 		query,
+		prDBID,
 		pr.Title,
 		authorDBID,
 		statusID,
@@ -81,8 +88,15 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return err
 	}
 
-	// Конвертируем числовой ID обратно в строковый
-	pr.ID = prIntToStringID(prID)
+	// Обновляем последовательность, чтобы следующий автоинкремент был больше текущего ID
+	_, err = tx.Exec(`
+		SELECT setval('pull_requests_id_seq', GREATEST((SELECT MAX(id) FROM pull_requests), $1))
+	`, prID)
+	if err != nil {
+		return err
+	}
+
+	// ID уже правильный (pr.ID содержит исходный "pr-1003", не перезаписываем)
 
 	// Добавляем ревьюверов
 	for _, reviewerID := range pr.AssignedReviewers {
@@ -103,7 +117,7 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 
 		_, err = tx.Exec(
 			"INSERT INTO pull_request_reviewers (pull_request_id, reviewer_id, created_at) VALUES ($1, $2, $3)",
-			prID,
+			prDBID,
 			reviewerDBID,
 			now,
 		)

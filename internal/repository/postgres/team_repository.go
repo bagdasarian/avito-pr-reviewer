@@ -23,7 +23,6 @@ func (r *teamRepository) Create(team *domain.Team) error {
 	}
 	defer tx.Rollback()
 
-	// Создаем команду (updated_at не устанавливаем при создании, остается NULL)
 	query := `
 		INSERT INTO teams (name, created_at)
 		VALUES ($1, $2)
@@ -47,17 +46,50 @@ func (r *teamRepository) Create(team *domain.Team) error {
 	}
 	team.ID = teamID
 
-	// Создаем/обновляем пользователей
-	userRepo := NewUserRepository(r.db)
+	// Создаем/обновляем пользователей в той же транзакции
 	for _, member := range team.Members {
-		user := &domain.User{
-			ID:       member.UserID,
-			Username: member.Username,
-			TeamID:   teamID,
-			IsActive: member.IsActive,
+		dbID, err := stringIDToInt(member.UserID)
+		if err != nil {
+			// Если ID невалидный, создаем без ID (автоинкремент)
+			query := `
+				INSERT INTO users (name, team_id, is_active, created_at)
+				VALUES ($1, $2, $3, $4)
+				RETURNING id, created_at, updated_at
+			`
+			var userID int
+			var userCreatedAt time.Time
+			var updatedAt sql.NullTime
+			err = tx.QueryRow(query, member.Username, teamID, member.IsActive, now).Scan(&userID, &userCreatedAt, &updatedAt)
+			if err != nil {
+				return err
+			}
+			continue
 		}
-		if err := userRepo.Create(user); err != nil {
+
+		updateQuery := `
+			UPDATE users
+			SET name = $2, team_id = $3, is_active = $4, updated_at = $5
+			WHERE id = $1
+		`
+		result, err := tx.Exec(updateQuery, dbID, member.Username, teamID, member.IsActive, now)
+		if err != nil {
 			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			insertQuery := `
+				INSERT INTO users (id, name, team_id, is_active, created_at)
+				VALUES ($1, $2, $3, $4, $5)
+			`
+			_, err = tx.Exec(insertQuery, dbID, member.Username, teamID, member.IsActive, now)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

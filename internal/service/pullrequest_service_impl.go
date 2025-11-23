@@ -74,15 +74,7 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 		return nil, err
 	}
 
-	createdPR, err := s.pullRequestRepo.GetByID(prID)
-	if err != nil {
-		if err.Error() == "pull request not found" {
-			return nil, domain.NewNotFoundError("pull request with id " + prID)
-		}
-		return nil, err
-	}
-
-	return createdPR, nil
+	return pr, nil
 }
 
 // MergePR помечает PR как MERGED (идемпотентная операция)

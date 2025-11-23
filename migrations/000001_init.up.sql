@@ -23,13 +23,16 @@ CREATE TABLE users (
 );
 
 CREATE TABLE pull_requests (
-    id SERIAL PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
     author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     status_id INTEGER NOT NULL REFERENCES statuses(id) ON DELETE RESTRICT,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NULL
 );
+
+CREATE SEQUENCE pull_requests_id_seq;
+ALTER TABLE pull_requests ALTER COLUMN id SET DEFAULT nextval('pull_requests_id_seq');
 
 -- Связующая таблица PR и Reviewers
 CREATE TABLE pull_request_reviewers (
