@@ -424,7 +424,15 @@ func TestPullRequestRepository_ReplaceReviewer(t *testing.T) {
 	t.Run("успешная замена ревьювера", func(t *testing.T) {
 		repo, mock := setupPRRepo(t)
 
+		// Проверка, что новый ревьювер не назначен (exists = false)
+		existsRows := sqlmock.NewRows([]string{"exists"}).AddRow(false)
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(1001, 2).
+			WillReturnRows(existsRows)
+
+		// UPDATE для замены
 		mock.ExpectExec("UPDATE pull_request_reviewers").
+			WithArgs(2, 1001, 1).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err := repo.ReplaceReviewer(context.Background(), "pr-1001", "u1", "u2")
@@ -435,8 +443,72 @@ func TestPullRequestRepository_ReplaceReviewer(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("ошибка: старый ревьювер не назначен на PR (удален - репозиторий не проверяет это)", func(t *testing.T) {
-		t.Skip("Репозиторий не проверяет, назначен ли ревьювер на PR - это бизнес-логика сервиса")
+	t.Run("успешная замена ревьювера когда новый уже назначен", func(t *testing.T) {
+		repo, mock := setupPRRepo(t)
+
+		// Проверка, что новый ревьювер уже назначен (exists = true)
+		existsRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(1001, 2).
+			WillReturnRows(existsRows)
+
+		// DELETE старого ревьювера
+		mock.ExpectExec("DELETE FROM pull_request_reviewers").
+			WithArgs(1001, 1).
+			WillReturnResult(sqlmock.NewResult(1, 1))
+
+		err := repo.ReplaceReviewer(context.Background(), "pr-1001", "u1", "u2")
+
+		require.NoError(t, err)
+
+		err = mock.ExpectationsWereMet()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ошибка: старый ревьювер не назначен на PR", func(t *testing.T) {
+		repo, mock := setupPRRepo(t)
+
+		// Проверка, что новый ревьювер не назначен (exists = false)
+		existsRows := sqlmock.NewRows([]string{"exists"}).AddRow(false)
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(1001, 2).
+			WillReturnRows(existsRows)
+
+		// UPDATE не находит запись (rowsAffected = 0)
+		mock.ExpectExec("UPDATE pull_request_reviewers").
+			WithArgs(2, 1001, 1).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := repo.ReplaceReviewer(context.Background(), "pr-1001", "u1", "u2")
+
+		require.Error(t, err)
+		assert.Equal(t, "reviewer is not assigned to this PR", err.Error())
+
+		err = mock.ExpectationsWereMet()
+		assert.NoError(t, err)
+	})
+
+	t.Run("ошибка: старый ревьювер не назначен на PR (когда новый уже назначен)", func(t *testing.T) {
+		repo, mock := setupPRRepo(t)
+
+		// Проверка, что новый ревьювер уже назначен (exists = true)
+		existsRows := sqlmock.NewRows([]string{"exists"}).AddRow(true)
+		mock.ExpectQuery("SELECT EXISTS").
+			WithArgs(1001, 2).
+			WillReturnRows(existsRows)
+
+		// DELETE не находит запись (rowsAffected = 0)
+		mock.ExpectExec("DELETE FROM pull_request_reviewers").
+			WithArgs(1001, 1).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := repo.ReplaceReviewer(context.Background(), "pr-1001", "u1", "u2")
+
+		require.Error(t, err)
+		assert.Equal(t, "reviewer is not assigned to this PR", err.Error())
+
+		err = mock.ExpectationsWereMet()
+		assert.NoError(t, err)
 	})
 
 	t.Run("ошибка: невалидный ID PR", func(t *testing.T) {

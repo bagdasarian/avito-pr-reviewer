@@ -338,7 +338,41 @@ func (r *pullRequestRepository) ReplaceReviewer(ctx context.Context, prID string
 		return errors.New("invalid new reviewer ID")
 	}
 
-	_, err = r.executor.ExecContext(
+	// Проверяем, не назначен ли уже новый ревьювер на этот PR
+	var exists bool
+	err = r.executor.QueryRowContext(
+		ctx,
+		"SELECT EXISTS(SELECT 1 FROM pull_request_reviewers WHERE pull_request_id = $1 AND reviewer_id = $2)",
+		prDBID,
+		newReviewerDBID,
+	).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		// Если новый ревьювер уже назначен, просто удаляем старого
+		result, err := r.executor.ExecContext(
+			ctx,
+			"DELETE FROM pull_request_reviewers WHERE pull_request_id = $1 AND reviewer_id = $2",
+			prDBID,
+			oldReviewerDBID,
+		)
+		if err != nil {
+			return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			return errors.New("reviewer is not assigned to this PR")
+		}
+	} else {
+		// Если нового ревьювера нет, делаем UPDATE
+		result, err := r.executor.ExecContext(
 		ctx,
 		"UPDATE pull_request_reviewers SET reviewer_id = $1 WHERE pull_request_id = $2 AND reviewer_id = $3",
 		newReviewerDBID,
@@ -347,6 +381,16 @@ func (r *pullRequestRepository) ReplaceReviewer(ctx context.Context, prID string
 	)
 	if err != nil {
 		return err
+		}
+
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return err
+		}
+
+		if rowsAffected == 0 {
+			return errors.New("reviewer is not assigned to this PR")
+		}
 	}
 
 	return nil

@@ -1,5 +1,7 @@
-.PHONY: help build run test test-verbose test-coverage clean deps fmt vet lint docker-up docker-down docker-restart load-test-low load-test-medium load-test-high load-test-stress
+.PHONY: help build run test test-verbose test-coverage test-integration clean deps fmt vet lint docker-up docker-down docker-restart load-test-low load-test-medium load-test-high load-test-stress
 
+APP_NAME=avito-pr-reviewer
+BINARY_NAME=bin/$(APP_NAME)
 MAIN_PATH=./cmd/app/main.go
 DOCKER_COMPOSE=docker-compose
 
@@ -10,6 +12,7 @@ help:
 	@echo "  test                 Запустить тесты"
 	@echo "  test-verbose         Запустить тесты с подробным выводом"
 	@echo "  test-coverage        Запустить тесты с покрытием кода"
+	@echo "  test-integration     Запустить интеграционные тесты"
 	@echo "  fmt                  Форматировать код"
 	@echo "  clean                Очистить артефакты сборки"
 	@echo "  docker-up            Запустить сервисы через docker-compose"
@@ -44,8 +47,11 @@ test-coverage:
 	@go test -coverprofile=coverage.out ./...
 	@go tool cover -html=coverage.out -o coverage.html
 
+test-integration:
+	@go test -tags=integration -v ./test/integration/...
+
 fmt:
-	@go fmt ./... 
+	@go fmt ./...
 
 clean:
 	@rm -rf bin/
