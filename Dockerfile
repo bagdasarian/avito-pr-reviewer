@@ -3,15 +3,11 @@ FROM golang:1.25.4-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go mod файлы (go.sum может отсутствовать, это нормально)
 COPY go.mod ./
-# Копируем go.sum если он существует (опционально)
 COPY go.sum* ./
 
-# Загружаем зависимости
 RUN go mod download
 
-# Копируем исходный код
 COPY . .
 
 # Собираем приложение
