@@ -12,7 +12,7 @@ func (h *Handler) CreatePR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pr, err := h.pullRequestService.CreatePR(req.PullRequestID, req.PullRequestName, req.AuthorID)
+	pr, err := h.pullRequestService.CreatePR(r.Context(), req.PullRequestID, req.PullRequestName, req.AuthorID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -32,7 +32,7 @@ func (h *Handler) MergePR(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pr, err := h.pullRequestService.MergePR(req.PullRequestID)
+	pr, err := h.pullRequestService.MergePR(r.Context(), req.PullRequestID)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -52,7 +52,7 @@ func (h *Handler) ReassignReviewer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pr, newReviewerID, err := h.pullRequestService.ReassignReviewer(req.PullRequestID, req.OldUserID)
+	pr, newReviewerID, err := h.pullRequestService.ReassignReviewer(r.Context(), req.PullRequestID, req.OldUserID)
 	if err != nil {
 		h.handleError(w, err)
 		return

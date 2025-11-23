@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -49,13 +50,13 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			{ID: "u3", Username: "Charlie", TeamID: 1, TeamName: "backend", IsActive: true},
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
-		mockUserRepo.On("GetByID", authorID).Return(author, nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
-		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
-		mockPRRepo.On("Create", mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
+		mockUserRepo.On("GetByID", mock.Anything, authorID).Return(author, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(team, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
+		mockPRRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
 
-		result, err := service.CreatePR(prID, title, authorID)
+		result, err := service.CreatePR(context.Background(), prID, title, authorID)
 
 		require.NoError(t, err)
 		assert.Equal(t, prID, result.ID)
@@ -84,9 +85,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			Status:   domain.StatusOpen,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(existingPR, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(existingPR, nil).Once()
 
-		result, err := service.CreatePR(prID, "New PR", "u1")
+		result, err := service.CreatePR(context.Background(), prID, "New PR", "u1")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -104,10 +105,10 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		prID := "pr-1"
 		authorID := "u999"
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
-		mockUserRepo.On("GetByID", authorID).Return(nil, errors.New("user not found")).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
+		mockUserRepo.On("GetByID", mock.Anything, authorID).Return(nil, errors.New("user not found")).Once()
 
-		result, err := service.CreatePR(prID, "New PR", authorID)
+		result, err := service.CreatePR(context.Background(), prID, "New PR", authorID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -135,11 +136,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			CreatedAt: time.Now(),
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
-		mockUserRepo.On("GetByID", authorID).Return(author, nil).Once()
-		mockTeamRepo.On("GetByName", "nonexistent").Return(nil, errors.New("team not found")).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
+		mockUserRepo.On("GetByID", mock.Anything, authorID).Return(author, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "nonexistent").Return(nil, errors.New("team not found")).Once()
 
-		result, err := service.CreatePR(prID, "New PR", authorID)
+		result, err := service.CreatePR(context.Background(), prID, "New PR", authorID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -182,13 +183,13 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			{ID: "u1", Username: "Alice", TeamID: 1, TeamName: "backend", IsActive: true},
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
-		mockUserRepo.On("GetByID", authorID).Return(author, nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
-		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
-		mockPRRepo.On("Create", mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
+		mockUserRepo.On("GetByID", mock.Anything, authorID).Return(author, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(team, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
+		mockPRRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
 
-		result, err := service.CreatePR(prID, title, authorID)
+		result, err := service.CreatePR(context.Background(), prID, title, authorID)
 
 		require.NoError(t, err)
 		assert.Equal(t, prID, result.ID)
@@ -229,11 +230,11 @@ func TestPullRequestService_MergePR(t *testing.T) {
 			MergedAt:          &mergedTime,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(openPR, nil).Once()
-		mockPRRepo.On("UpdateStatus", prID, domain.StatusMerged, mock.AnythingOfType("*time.Time")).Return(nil).Once()
-		mockPRRepo.On("GetByID", prID).Return(mergedPR, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(openPR, nil).Once()
+		mockPRRepo.On("UpdateStatus", mock.Anything, prID, domain.StatusMerged, mock.AnythingOfType("*time.Time")).Return(nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(mergedPR, nil).Once()
 
-		result, err := service.MergePR(prID)
+		result, err := service.MergePR(context.Background(), prID)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.StatusMerged, result.Status)
@@ -260,9 +261,9 @@ func TestPullRequestService_MergePR(t *testing.T) {
 			MergedAt:          &mergedTime,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(mergedPR, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(mergedPR, nil).Once()
 
-		result, err := service.MergePR(prID)
+		result, err := service.MergePR(context.Background(), prID)
 
 		require.NoError(t, err)
 		assert.Equal(t, domain.StatusMerged, result.Status)
@@ -278,9 +279,9 @@ func TestPullRequestService_MergePR(t *testing.T) {
 
 		prID := "pr-999"
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
 
-		result, err := service.MergePR(prID)
+		result, err := service.MergePR(context.Background(), prID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -347,14 +348,14 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 			MergedAt:          nil,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(pr, nil).Once()
-		mockUserRepo.On("GetByID", oldReviewerID).Return(oldReviewer, nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
-		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
-		mockPRRepo.On("ReplaceReviewer", prID, oldReviewerID, mock.AnythingOfType("string")).Return(nil).Once()
-		mockPRRepo.On("GetByID", prID).Return(updatedPR, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(pr, nil).Once()
+		mockUserRepo.On("GetByID", mock.Anything, oldReviewerID).Return(oldReviewer, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(team, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
+		mockPRRepo.On("ReplaceReviewer", mock.Anything, prID, oldReviewerID, mock.AnythingOfType("string")).Return(nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(updatedPR, nil).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, oldReviewerID)
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, oldReviewerID)
 
 		require.NoError(t, err)
 		assert.Equal(t, prID, result.ID)
@@ -375,9 +376,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 
 		prID := "pr-999"
 
-		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(nil, errors.New("pull request not found")).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, "u2")
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, "u2")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -405,9 +406,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 			MergedAt:          &mergedTime,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(mergedPR, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(mergedPR, nil).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, "u2")
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, "u2")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -434,9 +435,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 			MergedAt:          nil,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(pr, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(pr, nil).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, "u999")
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, "u999")
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -487,12 +488,12 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 			{ID: "u2", Username: "Bob", TeamID: 1, TeamName: "backend", IsActive: true},
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(pr, nil).Once()
-		mockUserRepo.On("GetByID", oldReviewerID).Return(oldReviewer, nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
-		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(pr, nil).Once()
+		mockUserRepo.On("GetByID", mock.Anything, oldReviewerID).Return(oldReviewer, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(team, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, oldReviewerID)
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, oldReviewerID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -523,10 +524,10 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 			MergedAt:          nil,
 		}
 
-		mockPRRepo.On("GetByID", prID).Return(pr, nil).Once()
-		mockUserRepo.On("GetByID", oldReviewerID).Return(nil, errors.New("user not found")).Once()
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(pr, nil).Once()
+		mockUserRepo.On("GetByID", mock.Anything, oldReviewerID).Return(nil, errors.New("user not found")).Once()
 
-		result, newReviewer, err := service.ReassignReviewer(prID, oldReviewerID)
+		result, newReviewer, err := service.ReassignReviewer(context.Background(), prID, oldReviewerID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)

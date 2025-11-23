@@ -29,7 +29,7 @@ func main() {
 	pullRequestRepo := postgres.NewPullRequestRepository(database)
 	statsRepo := postgres.NewStatsRepository(database)
 
-	teamService := service.NewTeamService(teamRepo, userRepo)
+	teamService := service.NewTeamService(database, teamRepo, userRepo)
 	userService := service.NewUserService(userRepo, pullRequestRepo)
 	pullRequestService := service.NewPullRequestService(pullRequestRepo, userRepo, teamRepo)
 	statsService := service.NewStatsService(statsRepo)

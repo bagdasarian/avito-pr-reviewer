@@ -1,8 +1,12 @@
 package repository
 
-import "github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+import (
+	"context"
+
+	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+)
 
 type TeamRepository interface {
-	Create(team *domain.Team) error
-	GetByName(name string) (*domain.Team, error)
+	Create(ctx context.Context, team *domain.Team) error
+	GetByName(ctx context.Context, name string) (*domain.Team, error)
 }

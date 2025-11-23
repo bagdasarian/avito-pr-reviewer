@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"time"
 
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
@@ -27,8 +28,8 @@ func NewPullRequestService(
 }
 
 // CreatePR создает PR и автоматически назначает до 2 активных ревьюверов из команды автора
-func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.PullRequest, error) {
-	existingPR, err := s.pullRequestRepo.GetByID(prID)
+func (s *pullRequestService) CreatePR(ctx context.Context, prID, title, authorID string) (*domain.PullRequest, error) {
+	existingPR, err := s.pullRequestRepo.GetByID(ctx, prID)
 	if err == nil && existingPR != nil {
 		return nil, domain.ErrPRExists
 	}
@@ -36,7 +37,7 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 		return nil, err
 	}
 
-	author, err := s.userRepo.GetByID(authorID)
+	author, err := s.userRepo.GetByID(ctx, authorID)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, domain.NewNotFoundError("user with id " + authorID)
@@ -44,7 +45,7 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 		return nil, err
 	}
 
-	team, err := s.teamRepo.GetByName(author.TeamName)
+	team, err := s.teamRepo.GetByName(ctx, author.TeamName)
 	if err != nil {
 		if err.Error() == "team not found" {
 			return nil, domain.NewNotFoundError("team with name " + author.TeamName)
@@ -52,7 +53,7 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 		return nil, err
 	}
 
-	teamMembers, err := s.userRepo.GetByTeamID(team.ID)
+	teamMembers, err := s.userRepo.GetByTeamID(ctx, team.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,7 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 		MergedAt:          nil,
 	}
 
-	err = s.pullRequestRepo.Create(pr)
+	err = s.pullRequestRepo.Create(ctx, pr)
 	if err != nil {
 		return nil, err
 	}
@@ -78,8 +79,8 @@ func (s *pullRequestService) CreatePR(prID, title, authorID string) (*domain.Pul
 }
 
 // MergePR помечает PR как MERGED (идемпотентная операция)
-func (s *pullRequestService) MergePR(prID string) (*domain.PullRequest, error) {
-	pr, err := s.pullRequestRepo.GetByID(prID)
+func (s *pullRequestService) MergePR(ctx context.Context, prID string) (*domain.PullRequest, error) {
+	pr, err := s.pullRequestRepo.GetByID(ctx, prID)
 	if err != nil {
 		if err.Error() == "pull request not found" {
 			return nil, domain.NewNotFoundError("pull request with id " + prID)
@@ -92,7 +93,7 @@ func (s *pullRequestService) MergePR(prID string) (*domain.PullRequest, error) {
 	}
 
 	now := time.Now()
-	err = s.pullRequestRepo.UpdateStatus(prID, domain.StatusMerged, &now)
+	err = s.pullRequestRepo.UpdateStatus(ctx, prID, domain.StatusMerged, &now)
 	if err != nil {
 		if err.Error() == "pull request not found" {
 			return nil, domain.NewNotFoundError("pull request with id " + prID)
@@ -100,7 +101,7 @@ func (s *pullRequestService) MergePR(prID string) (*domain.PullRequest, error) {
 		return nil, err
 	}
 
-	mergedPR, err := s.pullRequestRepo.GetByID(prID)
+	mergedPR, err := s.pullRequestRepo.GetByID(ctx, prID)
 	if err != nil {
 		if err.Error() == "pull request not found" {
 			return nil, domain.NewNotFoundError("pull request with id " + prID)
@@ -112,8 +113,8 @@ func (s *pullRequestService) MergePR(prID string) (*domain.PullRequest, error) {
 }
 
 // ReassignReviewer переназначает конкретного ревьювера на другого из его команды
-func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*domain.PullRequest, string, error) {
-	pr, err := s.pullRequestRepo.GetByID(prID)
+func (s *pullRequestService) ReassignReviewer(ctx context.Context, prID, oldReviewerID string) (*domain.PullRequest, string, error) {
+	pr, err := s.pullRequestRepo.GetByID(ctx, prID)
 	if err != nil {
 		if err.Error() == "pull request not found" {
 			return nil, "", domain.NewNotFoundError("pull request with id " + prID)
@@ -137,7 +138,7 @@ func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*doma
 		return nil, "", domain.ErrNotAssigned
 	}
 
-	oldReviewer, err := s.userRepo.GetByID(oldReviewerID)
+	oldReviewer, err := s.userRepo.GetByID(ctx, oldReviewerID)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, "", domain.NewNotFoundError("user with id " + oldReviewerID)
@@ -145,7 +146,7 @@ func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*doma
 		return nil, "", err
 	}
 
-	team, err := s.teamRepo.GetByName(oldReviewer.TeamName)
+	team, err := s.teamRepo.GetByName(ctx, oldReviewer.TeamName)
 	if err != nil {
 		if err.Error() == "team not found" {
 			return nil, "", domain.NewNotFoundError("team with name " + oldReviewer.TeamName)
@@ -153,7 +154,7 @@ func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*doma
 		return nil, "", err
 	}
 
-	teamMembers, err := s.userRepo.GetByTeamID(team.ID)
+	teamMembers, err := s.userRepo.GetByTeamID(ctx, team.ID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -165,7 +166,7 @@ func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*doma
 
 	newReviewerID := selectedReviewers[0]
 
-	err = s.pullRequestRepo.ReplaceReviewer(prID, oldReviewerID, newReviewerID)
+	err = s.pullRequestRepo.ReplaceReviewer(ctx, prID, oldReviewerID, newReviewerID)
 	if err != nil {
 		if err.Error() == "reviewer is not assigned to this PR" {
 			return nil, "", domain.ErrNotAssigned
@@ -173,7 +174,7 @@ func (s *pullRequestService) ReassignReviewer(prID, oldReviewerID string) (*doma
 		return nil, "", err
 	}
 
-	updatedPR, err := s.pullRequestRepo.GetByID(prID)
+	updatedPR, err := s.pullRequestRepo.GetByID(ctx, prID)
 	if err != nil {
 		if err.Error() == "pull request not found" {
 			return nil, "", domain.NewNotFoundError("pull request with id " + prID)

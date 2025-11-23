@@ -15,7 +15,7 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	team := httpTeamToDomain(req)
-	createdTeam, err := h.teamService.CreateTeam(team)
+	createdTeam, err := h.teamService.CreateTeam(r.Context(), team)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -38,7 +38,7 @@ func (h *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	team, err := h.teamService.GetTeam(teamName)
+	team, err := h.teamService.GetTeam(r.Context(), teamName)
 	if err != nil {
 		h.handleError(w, err)
 		return

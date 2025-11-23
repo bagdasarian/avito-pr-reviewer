@@ -6,13 +6,13 @@ import (
 )
 
 func (h *Handler) GetStats(w http.ResponseWriter, r *http.Request) {
-	reviewerStats, err := h.statsService.GetReviewerStats()
+	reviewerStats, err := h.statsService.GetReviewerStats(r.Context())
 	if err != nil {
 		h.handleError(w, err)
 		return
 	}
 
-	prStats, err := h.statsService.GetPRStatsByStatus()
+	prStats, err := h.statsService.GetPRStatsByStatus(r.Context())
 	if err != nil {
 		h.handleError(w, err)
 		return

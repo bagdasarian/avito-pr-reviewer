@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,33 +13,25 @@ import (
 )
 
 type pullRequestRepository struct {
-	db *sql.DB
+	executor DBExecutor
 }
 
 func NewPullRequestRepository(db *sql.DB) *pullRequestRepository {
-	return &pullRequestRepository{db: db}
+	return &pullRequestRepository{executor: db}
 }
 
-// prStringIDToInt конвертирует строковый ID PR (например "pr-1001") в числовой
 func prStringIDToInt(stringID string) (int, error) {
 	idStr := strings.TrimPrefix(stringID, "pr-")
 	return strconv.Atoi(idStr)
 }
 
-// prIntToStringID конвертирует числовой ID в строковый (например 1001 -> "pr-1001")
 func prIntToStringID(id int) string {
 	return fmt.Sprintf("pr-%d", id)
 }
 
-func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (r *pullRequestRepository) Create(ctx context.Context, pr *domain.PullRequest) error {
 	var statusID int
-	err = tx.QueryRow("SELECT id FROM statuses WHERE name = $1", string(pr.Status)).Scan(&statusID)
+	err := r.executor.QueryRowContext(ctx, "SELECT id FROM statuses WHERE name = $1", string(pr.Status)).Scan(&statusID)
 	if err != nil {
 		return err
 	}
@@ -46,15 +39,6 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 	authorDBID, err := stringIDToInt(pr.AuthorID)
 	if err != nil {
 		return errors.New("invalid author ID")
-	}
-
-	var authorExists bool
-	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", authorDBID).Scan(&authorExists)
-	if err != nil {
-		return err
-	}
-	if !authorExists {
-		return errors.New("author not found")
 	}
 
 	prDBID, err := prStringIDToInt(pr.ID)
@@ -71,7 +55,8 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 	now := time.Now()
 	var prID int
 	var updatedAt sql.NullTime
-	err = tx.QueryRow(
+	err = r.executor.QueryRowContext(
+		ctx,
 		query,
 		prDBID,
 		pr.Title,
@@ -83,7 +68,7 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return err
 	}
 
-	_, err = tx.Exec(`
+	_, err = r.executor.ExecContext(ctx, `
 		SELECT setval('pull_requests_id_seq', GREATEST((SELECT MAX(id) FROM pull_requests), $1))
 	`, prID)
 	if err != nil {
@@ -96,16 +81,8 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 			return errors.New("invalid reviewer ID")
 		}
 
-		var reviewerExists bool
-		err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", reviewerDBID).Scan(&reviewerExists)
-		if err != nil {
-			return err
-		}
-		if !reviewerExists {
-			return errors.New("reviewer not found")
-		}
-
-		_, err = tx.Exec(
+		_, err = r.executor.ExecContext(
+			ctx,
 			"INSERT INTO pull_request_reviewers (pull_request_id, reviewer_id, created_at) VALUES ($1, $2, $3)",
 			prDBID,
 			reviewerDBID,
@@ -116,10 +93,10 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *pullRequestRepository) GetByID(id string) (*domain.PullRequest, error) {
+func (r *pullRequestRepository) GetByID(ctx context.Context, id string) (*domain.PullRequest, error) {
 	prDBID, err := prStringIDToInt(id)
 	if err != nil {
 		return nil, errors.New("invalid pull request ID")
@@ -138,7 +115,7 @@ func (r *pullRequestRepository) GetByID(id string) (*domain.PullRequest, error) 
 	var createdAt time.Time
 	var updatedAt sql.NullTime
 	var authorDBID int
-	err = r.db.QueryRow(query, prDBID).Scan(
+	err = r.executor.QueryRowContext(ctx, query, prDBID).Scan(
 		&prDBID,
 		&pr.Title,
 		&authorDBID,
@@ -159,7 +136,7 @@ func (r *pullRequestRepository) GetByID(id string) (*domain.PullRequest, error) 
 	pr.Status = domain.Status(statusName)
 	pr.CreatedAt = createdAt
 
-	reviewers, err := r.GetReviewersByPRID(id)
+	reviewers, err := r.GetReviewersByPRID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -172,20 +149,14 @@ func (r *pullRequestRepository) GetByID(id string) (*domain.PullRequest, error) 
 	return pr, nil
 }
 
-func (r *pullRequestRepository) UpdateStatus(id string, status domain.Status, mergedAt *time.Time) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (r *pullRequestRepository) UpdateStatus(ctx context.Context, id string, status domain.Status, mergedAt *time.Time) error {
 	prDBID, err := prStringIDToInt(id)
 	if err != nil {
 		return errors.New("invalid pull request ID")
 	}
 
 	var statusID int
-	err = tx.QueryRow("SELECT id FROM statuses WHERE name = $1", string(status)).Scan(&statusID)
+	err = r.executor.QueryRowContext(ctx, "SELECT id FROM statuses WHERE name = $1", string(status)).Scan(&statusID)
 	if err != nil {
 		return err
 	}
@@ -203,7 +174,7 @@ func (r *pullRequestRepository) UpdateStatus(id string, status domain.Status, me
 	}
 
 	var prID int
-	err = tx.QueryRow(query, prDBID, statusID, updateTime).Scan(&prID)
+	err = r.executor.QueryRowContext(ctx, query, prDBID, statusID, updateTime).Scan(&prID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return errors.New("pull request not found")
@@ -211,16 +182,10 @@ func (r *pullRequestRepository) UpdateStatus(id string, status domain.Status, me
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *pullRequestRepository) AddReviewer(prID string, reviewerID string) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (r *pullRequestRepository) AddReviewer(ctx context.Context, prID string, reviewerID string) error {
 	prDBID, err := prStringIDToInt(prID)
 	if err != nil {
 		return errors.New("invalid pull request ID")
@@ -231,25 +196,8 @@ func (r *pullRequestRepository) AddReviewer(prID string, reviewerID string) erro
 		return errors.New("invalid reviewer ID")
 	}
 
-	var prExists bool
-	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM pull_requests WHERE id = $1)", prDBID).Scan(&prExists)
-	if err != nil {
-		return err
-	}
-	if !prExists {
-		return errors.New("pull request not found")
-	}
-
-	var reviewerExists bool
-	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", reviewerDBID).Scan(&reviewerExists)
-	if err != nil {
-		return err
-	}
-	if !reviewerExists {
-		return errors.New("reviewer not found")
-	}
-
-	_, err = tx.Exec(
+	_, err = r.executor.ExecContext(
+		ctx,
 		"INSERT INTO pull_request_reviewers (pull_request_id, reviewer_id, created_at) VALUES ($1, $2, $3)",
 		prDBID,
 		reviewerDBID,
@@ -259,16 +207,10 @@ func (r *pullRequestRepository) AddReviewer(prID string, reviewerID string) erro
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *pullRequestRepository) RemoveReviewer(prID string, reviewerID string) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (r *pullRequestRepository) RemoveReviewer(ctx context.Context, prID string, reviewerID string) error {
 	prDBID, err := prStringIDToInt(prID)
 	if err != nil {
 		return errors.New("invalid pull request ID")
@@ -279,7 +221,8 @@ func (r *pullRequestRepository) RemoveReviewer(prID string, reviewerID string) e
 		return errors.New("invalid reviewer ID")
 	}
 
-	result, err := tx.Exec(
+	result, err := r.executor.ExecContext(
+		ctx,
 		"DELETE FROM pull_request_reviewers WHERE pull_request_id = $1 AND reviewer_id = $2",
 		prDBID,
 		reviewerDBID,
@@ -297,10 +240,10 @@ func (r *pullRequestRepository) RemoveReviewer(prID string, reviewerID string) e
 		return errors.New("reviewer not assigned to this PR")
 	}
 
-	return tx.Commit()
+	return nil
 }
 
-func (r *pullRequestRepository) GetReviewersByPRID(prID string) ([]string, error) {
+func (r *pullRequestRepository) GetReviewersByPRID(ctx context.Context, prID string) ([]string, error) {
 	prDBID, err := prStringIDToInt(prID)
 	if err != nil {
 		return nil, errors.New("invalid pull request ID")
@@ -315,7 +258,7 @@ func (r *pullRequestRepository) GetReviewersByPRID(prID string) ([]string, error
 		ORDER BY prr.created_at
 	`
 
-	rows, err := r.db.Query(query, prDBID)
+	rows, err := r.executor.QueryContext(ctx, query, prDBID)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +276,7 @@ func (r *pullRequestRepository) GetReviewersByPRID(prID string) ([]string, error
 	return reviewers, rows.Err()
 }
 
-func (r *pullRequestRepository) GetPRsByReviewerID(reviewerID string) ([]*domain.PullRequestShort, error) {
+func (r *pullRequestRepository) GetPRsByReviewerID(ctx context.Context, reviewerID string) ([]*domain.PullRequestShort, error) {
 	reviewerDBID, err := stringIDToInt(reviewerID)
 	if err != nil {
 		return nil, errors.New("invalid reviewer ID")
@@ -350,7 +293,7 @@ func (r *pullRequestRepository) GetPRsByReviewerID(reviewerID string) ([]*domain
 		ORDER BY pr.created_at DESC
 	`
 
-	rows, err := r.db.Query(query, reviewerDBID)
+	rows, err := r.executor.QueryContext(ctx, query, reviewerDBID)
 	if err != nil {
 		return nil, err
 	}
@@ -379,13 +322,7 @@ func (r *pullRequestRepository) GetPRsByReviewerID(reviewerID string) ([]*domain
 	return prs, rows.Err()
 }
 
-func (r *pullRequestRepository) ReplaceReviewer(prID string, oldReviewerID string, newReviewerID string) error {
-	tx, err := r.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (r *pullRequestRepository) ReplaceReviewer(ctx context.Context, prID string, oldReviewerID string, newReviewerID string) error {
 	prDBID, err := prStringIDToInt(prID)
 	if err != nil {
 		return errors.New("invalid pull request ID")
@@ -401,21 +338,8 @@ func (r *pullRequestRepository) ReplaceReviewer(prID string, oldReviewerID strin
 		return errors.New("invalid new reviewer ID")
 	}
 
-	var exists bool
-	err = tx.QueryRow(
-		"SELECT EXISTS(SELECT 1 FROM pull_request_reviewers WHERE pull_request_id = $1 AND reviewer_id = $2)",
-		prDBID,
-		oldReviewerDBID,
-	).Scan(&exists)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return errors.New("reviewer is not assigned to this PR")
-	}
-
-	_, err = tx.Exec(
+	_, err = r.executor.ExecContext(
+		ctx,
 		"UPDATE pull_request_reviewers SET reviewer_id = $1 WHERE pull_request_id = $2 AND reviewer_id = $3",
 		newReviewerDBID,
 		prDBID,
@@ -425,6 +349,5 @@ func (r *pullRequestRepository) ReplaceReviewer(prID string, oldReviewerID strin
 		return err
 	}
 
-	return tx.Commit()
+	return nil
 }
- 

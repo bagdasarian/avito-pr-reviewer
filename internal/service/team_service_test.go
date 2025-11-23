@@ -1,10 +1,13 @@
 package service
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,10 +16,12 @@ import (
 
 func TestTeamService_CreateTeam(t *testing.T) {
 	t.Run("успешное создание команды", func(t *testing.T) {
+		db, mockDB := setupMockDBForService(t)
 		mockTeamRepo := new(MockTeamRepository)
 		mockUserRepo := new(MockUserRepository)
 
-		service := NewTeamService(mockTeamRepo, mockUserRepo)
+		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
+		ctx := context.Background()
 
 		team := &domain.Team{
 			Name: "backend",
@@ -37,11 +42,24 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			UpdatedAt: nil,
 		}
 
-		mockTeamRepo.On("GetByName", "backend").Return(nil, errors.New("team not found")).Once()
-		mockTeamRepo.On("Create", mock.AnythingOfType("*domain.Team")).Return(nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(createdTeam, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(nil, errors.New("team not found")).Once()
+		
+		mockDB.ExpectBegin()
+		mockDB.ExpectQuery(`INSERT INTO teams`).WithArgs("backend", sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), nil))
+		mockDB.ExpectQuery(`UPDATE users`).WithArgs(sqlmock.AnyArg(), "Alice", 1, true, sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"created_at", "updated_at"}).AddRow(time.Now(), nil))
+		mockDB.ExpectQuery(`UPDATE users`).WithArgs(sqlmock.AnyArg(), "Bob", 1, true, sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"created_at", "updated_at"}).AddRow(time.Now(), nil))
+		mockDB.ExpectCommit()
 
-		result, err := service.CreateTeam(team)
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(createdTeam, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return([]*domain.User{
+			{ID: "u1", Username: "Alice", IsActive: true},
+			{ID: "u2", Username: "Bob", IsActive: true},
+		}, nil).Once()
+
+		result, err := service.CreateTeam(ctx, team)
 
 		require.NoError(t, err)
 		assert.Equal(t, createdTeam.Name, result.Name)
@@ -49,13 +67,16 @@ func TestTeamService_CreateTeam(t *testing.T) {
 		assert.Nil(t, result.UpdatedAt)
 		mockTeamRepo.AssertExpectations(t)
 		mockUserRepo.AssertExpectations(t)
+		require.NoError(t, mockDB.ExpectationsWereMet())
 	})
 
 	t.Run("ошибка: команда уже существует", func(t *testing.T) {
+		db, _ := setupMockDBForService(t)
 		mockTeamRepo := new(MockTeamRepository)
 		mockUserRepo := new(MockUserRepository)
 
-		service := NewTeamService(mockTeamRepo, mockUserRepo)
+		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
+		ctx := context.Background()
 
 		team := &domain.Team{
 			Name: "backend",
@@ -74,9 +95,9 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			UpdatedAt: nil,
 		}
 
-		mockTeamRepo.On("GetByName", "backend").Return(existingTeam, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(existingTeam, nil).Once()
 
-		result, err := service.CreateTeam(team)
+		result, err := service.CreateTeam(ctx, team)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -85,10 +106,12 @@ func TestTeamService_CreateTeam(t *testing.T) {
 	})
 
 	t.Run("ошибка: команда была обновлена (конфликт)", func(t *testing.T) {
+		db, mockDB := setupMockDBForService(t)
 		mockTeamRepo := new(MockTeamRepository)
 		mockUserRepo := new(MockUserRepository)
 
-		service := NewTeamService(mockTeamRepo, mockUserRepo)
+		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
+		ctx := context.Background()
 
 		team := &domain.Team{
 			Name: "backend",
@@ -108,25 +131,42 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			UpdatedAt: &updatedTime,
 		}
 
-		mockTeamRepo.On("GetByName", "backend").Return(nil, errors.New("team not found")).Once()
-		mockTeamRepo.On("Create", mock.AnythingOfType("*domain.Team")).Return(nil).Once()
-		mockTeamRepo.On("GetByName", "backend").Return(updatedTeam, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(nil, errors.New("team not found")).Once()
+		
+		mockDB.ExpectBegin()
+		mockDB.ExpectQuery(`INSERT INTO teams`).WithArgs("backend", sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), updatedTime))
+		mockDB.ExpectQuery(`UPDATE users`).WithArgs(sqlmock.AnyArg(), "Alice", 1, true, sqlmock.AnyArg()).
+			WillReturnRows(sqlmock.NewRows([]string{"created_at", "updated_at"}).AddRow(time.Now(), nil))
+		mockDB.ExpectCommit()
 
-		result, err := service.CreateTeam(team)
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(updatedTeam, nil).Once()
+
+		result, err := service.CreateTeam(ctx, team)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
 		assert.True(t, errors.Is(err, domain.ErrTeamExists))
 		mockTeamRepo.AssertExpectations(t)
+		require.NoError(t, mockDB.ExpectationsWereMet())
 	})
+}
+
+func setupMockDBForService(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+	return db, mock
 }
 
 func TestTeamService_GetTeam(t *testing.T) {
 	t.Run("успешное получение команды", func(t *testing.T) {
+		db, _ := setupMockDBForService(t)
 		mockTeamRepo := new(MockTeamRepository)
 		mockUserRepo := new(MockUserRepository)
 
-		service := NewTeamService(mockTeamRepo, mockUserRepo)
+		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
+		ctx := context.Background()
 
 		team := &domain.Team{
 			ID:   1,
@@ -139,9 +179,13 @@ func TestTeamService_GetTeam(t *testing.T) {
 			UpdatedAt: nil,
 		}
 
-		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(team, nil).Once()
+		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return([]*domain.User{
+			{ID: "u1", Username: "Alice", IsActive: true},
+			{ID: "u2", Username: "Bob", IsActive: true},
+		}, nil).Once()
 
-		result, err := service.GetTeam("backend")
+		result, err := service.GetTeam(ctx, "backend")
 
 		require.NoError(t, err)
 		assert.Equal(t, team.Name, result.Name)
@@ -150,14 +194,16 @@ func TestTeamService_GetTeam(t *testing.T) {
 	})
 
 	t.Run("ошибка: команда не найдена", func(t *testing.T) {
+		db, _ := setupMockDBForService(t)
 		mockTeamRepo := new(MockTeamRepository)
 		mockUserRepo := new(MockUserRepository)
 
-		service := NewTeamService(mockTeamRepo, mockUserRepo)
+		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
+		ctx := context.Background()
 
-		mockTeamRepo.On("GetByName", "nonexistent").Return(nil, errors.New("team not found")).Once()
+		mockTeamRepo.On("GetByName", mock.Anything, "nonexistent").Return(nil, errors.New("team not found")).Once()
 
-		result, err := service.GetTeam("nonexistent")
+		result, err := service.GetTeam(ctx, "nonexistent")
 
 		require.Error(t, err)
 		assert.Nil(t, result)

@@ -1,11 +1,12 @@
 package service
 
-import "github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+import (
+	"context"
+
+	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+)
 
 type TeamService interface {
-	// CreateTeam создает команду с участниками
-	CreateTeam(team *domain.Team) (*domain.Team, error)
-
-	// GetTeam получает команду с участниками по имени
-	GetTeam(name string) (*domain.Team, error)
+	CreateTeam(ctx context.Context, team *domain.Team) (*domain.Team, error)
+	GetTeam(ctx context.Context, name string) (*domain.Team, error)
 }

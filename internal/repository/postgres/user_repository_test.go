@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"testing"
@@ -38,7 +39,7 @@ func TestUserRepository_Create(t *testing.T) {
 			WithArgs("john_doe", 1, true, sqlmock.AnyArg()).
 			WillReturnRows(rows)
 
-		err := repo.Create(user)
+		err := repo.Create(context.Background(), user)
 
 		require.NoError(t, err)
 		assert.Equal(t, "u5", user.ID, "ID должен быть сконвертирован в строковый формат")
@@ -67,7 +68,7 @@ func TestUserRepository_Create(t *testing.T) {
 			WithArgs(1, "john_updated", 2, false, sqlmock.AnyArg()).
 			WillReturnRows(rows)
 
-		err := repo.Create(user)
+		err := repo.Update(context.Background(), user)
 
 		require.NoError(t, err)
 		assert.Equal(t, "u1", user.ID, "ID должен остаться прежним")
@@ -77,7 +78,7 @@ func TestUserRepository_Create(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("создание нового пользователя, если UPDATE не нашел запись", func(t *testing.T) {
+	t.Run("создание нового пользователя с указанным ID", func(t *testing.T) {
 		repo, mock := setupUserRepo(t)
 
 		now := time.Now()
@@ -88,20 +89,16 @@ func TestUserRepository_Create(t *testing.T) {
 			IsActive: true,
 		}
 
-		mock.ExpectQuery("UPDATE users").
-			WithArgs(999, "new_user", 1, true, sqlmock.AnyArg()).
-			WillReturnError(sql.ErrNoRows)
-
-		rows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
-			AddRow(10, now, nil)
+		rows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
+			AddRow(now, nil)
 		mock.ExpectQuery("INSERT INTO users").
-			WithArgs("new_user", 1, true, sqlmock.AnyArg()).
+			WithArgs(999, "new_user", 1, true, sqlmock.AnyArg()).
 			WillReturnRows(rows)
 
-		err := repo.Create(user)
+		err := repo.CreateWithID(context.Background(), user)
 
 		require.NoError(t, err)
-		assert.Equal(t, "u10", user.ID, "должен быть присвоен новый ID")
+		assert.Equal(t, "u999", user.ID, "ID должен остаться прежним")
 
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
@@ -124,7 +121,7 @@ func TestUserRepository_Create(t *testing.T) {
 			WithArgs("user", 1, true, sqlmock.AnyArg()).
 			WillReturnRows(rows)
 
-		err := repo.Create(user)
+		err := repo.Create(context.Background(), user)
 
 		require.NoError(t, err)
 		assert.Equal(t, "u11", user.ID)
@@ -148,7 +145,7 @@ func TestUserRepository_Create(t *testing.T) {
 			WithArgs("user", 1, true, sqlmock.AnyArg()).
 			WillReturnError(expectedError)
 
-		err := repo.Create(user)
+		err := repo.Create(context.Background(), user)
 
 		require.Error(t, err)
 		assert.Equal(t, expectedError, err)
@@ -178,7 +175,7 @@ func TestUserRepository_Update(t *testing.T) {
 			WithArgs(1, "updated_name", 2, false, sqlmock.AnyArg()).
 			WillReturnRows(rows)
 
-		err := repo.Update(user)
+		err := repo.Update(context.Background(), user)
 
 		require.NoError(t, err)
 		assert.NotNil(t, user.UpdatedAt)
@@ -201,7 +198,7 @@ func TestUserRepository_Update(t *testing.T) {
 			WithArgs(999, "user", 1, true, sqlmock.AnyArg()).
 			WillReturnError(sql.ErrNoRows)
 
-		err := repo.Update(user)
+		err := repo.Update(context.Background(), user)
 
 		require.Error(t, err)
 		assert.Equal(t, "user not found", err.Error())
@@ -220,7 +217,7 @@ func TestUserRepository_Update(t *testing.T) {
 			IsActive: true,
 		}
 
-		err := repo.Update(user)
+		err := repo.Update(context.Background(), user)
 
 		require.Error(t, err)
 		assert.Equal(t, "invalid user ID", err.Error())
@@ -244,7 +241,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		user, err := repo.GetByID("u1")
+		user, err := repo.GetByID(context.Background(), "u1")
 
 		require.NoError(t, err)
 		assert.NotNil(t, user)
@@ -270,7 +267,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		user, err := repo.GetByID("u1")
+		user, err := repo.GetByID(context.Background(), "u1")
 
 		require.NoError(t, err)
 		assert.NotNil(t, user)
@@ -287,7 +284,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 			WithArgs(999).
 			WillReturnError(sql.ErrNoRows)
 
-		user, err := repo.GetByID("u999")
+		user, err := repo.GetByID(context.Background(), "u999")
 
 		require.Error(t, err)
 		assert.Nil(t, user)
@@ -300,7 +297,7 @@ func TestUserRepository_GetByID(t *testing.T) {
 	t.Run("ошибка: невалидный ID", func(t *testing.T) {
 		repo, mock := setupUserRepo(t)
 
-		user, err := repo.GetByID("invalid")
+		user, err := repo.GetByID(context.Background(), "invalid")
 
 		require.Error(t, err)
 		assert.Nil(t, user)
@@ -325,7 +322,7 @@ func TestUserRepository_GetActiveByTeamID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		users, err := repo.GetActiveByTeamID(1)
+		users, err := repo.GetActiveByTeamID(context.Background(), 1)
 
 		require.NoError(t, err)
 		require.Len(t, users, 2)
@@ -346,7 +343,7 @@ func TestUserRepository_GetActiveByTeamID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		users, err := repo.GetActiveByTeamID(1)
+		users, err := repo.GetActiveByTeamID(context.Background(), 1)
 
 		require.NoError(t, err)
 		assert.Nil(t, users)
@@ -371,7 +368,7 @@ func TestUserRepository_GetByTeamID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		users, err := repo.GetByTeamID(1)
+		users, err := repo.GetByTeamID(context.Background(), 1)
 
 		require.NoError(t, err)
 		require.Len(t, users, 3)
@@ -392,7 +389,7 @@ func TestUserRepository_GetByTeamID(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(rows)
 
-		users, err := repo.GetByTeamID(1)
+		users, err := repo.GetByTeamID(context.Background(), 1)
 
 		require.NoError(t, err)
 		assert.Nil(t, users)
@@ -411,7 +408,7 @@ func TestUserRepository_SetIsActive(t *testing.T) {
 			WithArgs(1, false, sqlmock.AnyArg()).
 			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		err := repo.SetIsActive("u1", false)
+		err := repo.SetIsActive(context.Background(), "u1", false)
 
 		require.NoError(t, err)
 
@@ -426,7 +423,7 @@ func TestUserRepository_SetIsActive(t *testing.T) {
 			WithArgs(999, true, sqlmock.AnyArg()).
 			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		err := repo.SetIsActive("u999", true)
+		err := repo.SetIsActive(context.Background(), "u999", true)
 
 		require.Error(t, err)
 		assert.Equal(t, "user not found", err.Error())
@@ -438,7 +435,7 @@ func TestUserRepository_SetIsActive(t *testing.T) {
 	t.Run("ошибка: невалидный ID", func(t *testing.T) {
 		repo, mock := setupUserRepo(t)
 
-		err := repo.SetIsActive("invalid", true)
+		err := repo.SetIsActive(context.Background(), "invalid", true)
 
 		require.Error(t, err)
 		assert.Equal(t, "invalid user ID", err.Error())

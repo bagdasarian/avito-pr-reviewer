@@ -14,7 +14,7 @@ func (h *Handler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.userService.SetIsActive(req.UserID, req.IsActive)
+	user, err := h.userService.SetIsActive(r.Context(), req.UserID, req.IsActive)
 	if err != nil {
 		h.handleError(w, err)
 		return
@@ -37,7 +37,7 @@ func (h *Handler) GetReviewPRs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prs, err := h.userService.GetReviewPRs(userID)
+	prs, err := h.userService.GetReviewPRs(r.Context(), userID)
 	if err != nil {
 		h.handleError(w, err)
 		return

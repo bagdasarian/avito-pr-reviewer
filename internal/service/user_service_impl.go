@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
 	"github.com/bagdasarian/avito-pr-reviewer/internal/repository"
 )
@@ -10,7 +12,6 @@ type userService struct {
 	pullRequestRepo repository.PullRequestRepository
 }
 
-// NewUserService создает новый экземпляр UserService
 func NewUserService(userRepo repository.UserRepository, pullRequestRepo repository.PullRequestRepository) UserService {
 	return &userService{
 		userRepo:        userRepo,
@@ -18,9 +19,8 @@ func NewUserService(userRepo repository.UserRepository, pullRequestRepo reposito
 	}
 }
 
-// SetIsActive устанавливает флаг активности пользователя
-func (s *userService) SetIsActive(userID string, isActive bool) (*domain.User, error) {
-	_, err := s.userRepo.GetByID(userID)
+func (s *userService) SetIsActive(ctx context.Context, userID string, isActive bool) (*domain.User, error) {
+	_, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, domain.NewNotFoundError("user with id " + userID)
@@ -28,7 +28,7 @@ func (s *userService) SetIsActive(userID string, isActive bool) (*domain.User, e
 		return nil, err
 	}
 
-	err = s.userRepo.SetIsActive(userID, isActive)
+	err = s.userRepo.SetIsActive(ctx, userID, isActive)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, domain.NewNotFoundError("user with id " + userID)
@@ -36,7 +36,7 @@ func (s *userService) SetIsActive(userID string, isActive bool) (*domain.User, e
 		return nil, err
 	}
 
-	updatedUser, err := s.userRepo.GetByID(userID)
+	updatedUser, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, domain.NewNotFoundError("user with id " + userID)
@@ -47,9 +47,8 @@ func (s *userService) SetIsActive(userID string, isActive bool) (*domain.User, e
 	return updatedUser, nil
 }
 
-// GetReviewPRs получает список PR'ов, где пользователь назначен ревьювером
-func (s *userService) GetReviewPRs(userID string) ([]*domain.PullRequestShort, error) {
-	_, err := s.userRepo.GetByID(userID)
+func (s *userService) GetReviewPRs(ctx context.Context, userID string) ([]*domain.PullRequestShort, error) {
+	_, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		if err.Error() == "user not found" {
 			return nil, domain.NewNotFoundError("user with id " + userID)
@@ -57,7 +56,7 @@ func (s *userService) GetReviewPRs(userID string) ([]*domain.PullRequestShort, e
 		return nil, err
 	}
 
-	prs, err := s.pullRequestRepo.GetPRsByReviewerID(userID)
+	prs, err := s.pullRequestRepo.GetPRsByReviewerID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}

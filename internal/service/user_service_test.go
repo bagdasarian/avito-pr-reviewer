@@ -1,12 +1,14 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
 
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,11 +38,12 @@ func TestUserService_SetIsActive(t *testing.T) {
 			CreatedAt: user.CreatedAt,
 		}
 
-		mockUserRepo.On("GetByID", userID).Return(user, nil).Once()
-		mockUserRepo.On("SetIsActive", userID, false).Return(nil).Once()
-		mockUserRepo.On("GetByID", userID).Return(updatedUser, nil).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(user, nil).Once()
+		mockUserRepo.On("SetIsActive", mock.Anything, userID, false).Return(nil).Once()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(updatedUser, nil).Once()
 
-		result, err := service.SetIsActive(userID, false)
+		result, err := service.SetIsActive(ctx, userID, false)
 
 		require.NoError(t, err)
 		assert.Equal(t, false, result.IsActive)
@@ -57,9 +60,10 @@ func TestUserService_SetIsActive(t *testing.T) {
 
 		userID := "u999"
 
-		mockUserRepo.On("GetByID", userID).Return(nil, errors.New("user not found")).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(nil, errors.New("user not found")).Once()
 
-		result, err := service.SetIsActive(userID, false)
+		result, err := service.SetIsActive(ctx, userID, false)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -83,10 +87,11 @@ func TestUserService_SetIsActive(t *testing.T) {
 			CreatedAt: time.Now(),
 		}
 
-		mockUserRepo.On("GetByID", userID).Return(user, nil).Once()
-		mockUserRepo.On("SetIsActive", userID, false).Return(errors.New("database error")).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(user, nil).Once()
+		mockUserRepo.On("SetIsActive", mock.Anything, userID, false).Return(errors.New("database error")).Once()
 
-		result, err := service.SetIsActive(userID, false)
+		result, err := service.SetIsActive(ctx, userID, false)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
@@ -126,10 +131,11 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 			},
 		}
 
-		mockUserRepo.On("GetByID", userID).Return(user, nil).Once()
-		mockPRRepo.On("GetPRsByReviewerID", userID).Return(prs, nil).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(user, nil).Once()
+		mockPRRepo.On("GetPRsByReviewerID", mock.Anything, userID).Return(prs, nil).Once()
 
-		result, err := service.GetReviewPRs(userID)
+		result, err := service.GetReviewPRs(ctx, userID)
 
 		require.NoError(t, err)
 		assert.Len(t, result, 2)
@@ -154,10 +160,11 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 			CreatedAt: time.Now(),
 		}
 
-		mockUserRepo.On("GetByID", userID).Return(user, nil).Once()
-		mockPRRepo.On("GetPRsByReviewerID", userID).Return([]*domain.PullRequestShort{}, nil).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(user, nil).Once()
+		mockPRRepo.On("GetPRsByReviewerID", mock.Anything, userID).Return([]*domain.PullRequestShort{}, nil).Once()
 
-		result, err := service.GetReviewPRs(userID)
+		result, err := service.GetReviewPRs(ctx, userID)
 
 		require.NoError(t, err)
 		assert.Len(t, result, 0)
@@ -173,9 +180,10 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 
 		userID := "u999"
 
-		mockUserRepo.On("GetByID", userID).Return(nil, errors.New("user not found")).Once()
+		ctx := context.Background()
+		mockUserRepo.On("GetByID", mock.Anything, userID).Return(nil, errors.New("user not found")).Once()
 
-		result, err := service.GetReviewPRs(userID)
+		result, err := service.GetReviewPRs(ctx, userID)
 
 		require.Error(t, err)
 		assert.Nil(t, result)
