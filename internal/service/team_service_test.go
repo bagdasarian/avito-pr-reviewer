@@ -9,6 +9,7 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+	"github.com/bagdasarian/avito-pr-reviewer/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,8 +18,8 @@ import (
 func TestTeamService_CreateTeam(t *testing.T) {
 	t.Run("успешное создание команды", func(t *testing.T) {
 		db, mockDB := setupMockDBForService(t)
-		mockTeamRepo := new(MockTeamRepository)
-		mockUserRepo := new(MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
 
 		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
 		ctx := context.Background()
@@ -43,7 +44,7 @@ func TestTeamService_CreateTeam(t *testing.T) {
 		}
 
 		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(nil, errors.New("team not found")).Once()
-		
+
 		mockDB.ExpectBegin()
 		mockDB.ExpectQuery(`INSERT INTO teams`).WithArgs("backend", sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), nil))
@@ -72,8 +73,8 @@ func TestTeamService_CreateTeam(t *testing.T) {
 
 	t.Run("ошибка: команда уже существует", func(t *testing.T) {
 		db, _ := setupMockDBForService(t)
-		mockTeamRepo := new(MockTeamRepository)
-		mockUserRepo := new(MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
 
 		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
 		ctx := context.Background()
@@ -107,8 +108,8 @@ func TestTeamService_CreateTeam(t *testing.T) {
 
 	t.Run("ошибка: команда была обновлена (конфликт)", func(t *testing.T) {
 		db, mockDB := setupMockDBForService(t)
-		mockTeamRepo := new(MockTeamRepository)
-		mockUserRepo := new(MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
 
 		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
 		ctx := context.Background()
@@ -132,7 +133,7 @@ func TestTeamService_CreateTeam(t *testing.T) {
 		}
 
 		mockTeamRepo.On("GetByName", mock.Anything, "backend").Return(nil, errors.New("team not found")).Once()
-		
+
 		mockDB.ExpectBegin()
 		mockDB.ExpectQuery(`INSERT INTO teams`).WithArgs("backend", sqlmock.AnyArg()).
 			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).AddRow(1, time.Now(), updatedTime))
@@ -162,8 +163,8 @@ func setupMockDBForService(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
 func TestTeamService_GetTeam(t *testing.T) {
 	t.Run("успешное получение команды", func(t *testing.T) {
 		db, _ := setupMockDBForService(t)
-		mockTeamRepo := new(MockTeamRepository)
-		mockUserRepo := new(MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
 
 		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
 		ctx := context.Background()
@@ -195,8 +196,8 @@ func TestTeamService_GetTeam(t *testing.T) {
 
 	t.Run("ошибка: команда не найдена", func(t *testing.T) {
 		db, _ := setupMockDBForService(t)
-		mockTeamRepo := new(MockTeamRepository)
-		mockUserRepo := new(MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
 
 		service := NewTeamService(db, mockTeamRepo, mockUserRepo)
 		ctx := context.Background()

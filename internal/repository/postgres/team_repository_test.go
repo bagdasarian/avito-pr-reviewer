@@ -35,13 +35,11 @@ func TestTeamRepository_Create(t *testing.T) {
 			},
 		}
 
-
 		teamRows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow(1, now, nil)
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Team Alpha", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
-
 
 		err := repo.Create(context.Background(), team)
 
@@ -67,14 +65,11 @@ func TestTeamRepository_Create(t *testing.T) {
 			},
 		}
 
-
 		teamRows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow(1, now.Add(-7*24*time.Hour), updatedAt)
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Existing Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
-
-
 
 		err := repo.Create(context.Background(), team)
 
@@ -95,13 +90,11 @@ func TestTeamRepository_Create(t *testing.T) {
 			Members: []domain.TeamMember{},
 		}
 
-
 		teamRows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
 			AddRow(2, now, nil)
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Empty Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
-
 
 		err := repo.Create(context.Background(), team)
 
@@ -148,12 +141,10 @@ func TestTeamRepository_Create(t *testing.T) {
 			Members: []domain.TeamMember{},
 		}
 
-
 		expectedError := errors.New("database error")
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Team", sqlmock.AnyArg()).
 			WillReturnError(expectedError)
-
 
 		err := repo.Create(context.Background(), team)
 
@@ -163,7 +154,6 @@ func TestTeamRepository_Create(t *testing.T) {
 		err = mock.ExpectationsWereMet()
 		assert.NoError(t, err)
 	})
-
 
 	t.Run("ошибка: не удалось закоммитить транзакцию (удален - репозитории больше не создают транзакции)", func(t *testing.T) {
 		t.Skip("Репозитории больше не создают транзакции, этот тест не актуален")

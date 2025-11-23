@@ -10,4 +10,3 @@ type DBExecutor interface {
 	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
-

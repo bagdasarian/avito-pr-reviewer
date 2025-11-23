@@ -97,7 +97,7 @@ type PullRequestShortResponse struct {
 }
 
 type GetReviewPRsResponse struct {
-	UserID       string                      `json:"user_id"`
+	UserID       string                     `json:"user_id"`
 	PullRequests []PullRequestShortResponse `json:"pull_requests"`
 }
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+	"github.com/bagdasarian/avito-pr-reviewer/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,9 +15,9 @@ import (
 
 func TestPullRequestService_CreatePR(t *testing.T) {
 	t.Run("успешное создание PR с ревьюверами", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -25,11 +26,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		authorID := "u1"
 
 		author := &domain.User{
-			ID:       authorID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        authorID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -56,6 +57,16 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
 		mockPRRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
 
+		createdPR := &domain.PullRequest{
+			ID:                prID,
+			Title:             title,
+			AuthorID:          authorID,
+			Status:            domain.StatusOpen,
+			AssignedReviewers: []string{"u2", "u3"},
+			CreatedAt:         time.Now(),
+		}
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(createdPR, nil).Once()
+
 		result, err := service.CreatePR(context.Background(), prID, title, authorID)
 
 		require.NoError(t, err)
@@ -71,9 +82,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 	})
 
 	t.Run("ошибка: PR уже существует", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -96,9 +107,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 	})
 
 	t.Run("ошибка: автор не найден", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -118,9 +129,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 	})
 
 	t.Run("ошибка: команда не найдена", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -128,11 +139,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		authorID := "u1"
 
 		author := &domain.User{
-			ID:       authorID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "nonexistent",
-			IsActive: true,
+			ID:        authorID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "nonexistent",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -151,9 +162,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 	})
 
 	t.Run("создание PR без ревьюверов (нет доступных)", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -162,11 +173,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		authorID := "u1"
 
 		author := &domain.User{
-			ID:       authorID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        authorID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -189,6 +200,16 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 		mockUserRepo.On("GetByTeamID", mock.Anything, 1).Return(teamMembers, nil).Once()
 		mockPRRepo.On("Create", mock.Anything, mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
 
+		createdPR := &domain.PullRequest{
+			ID:                prID,
+			Title:             title,
+			AuthorID:          authorID,
+			Status:            domain.StatusOpen,
+			AssignedReviewers: []string{},
+			CreatedAt:         time.Now(),
+		}
+		mockPRRepo.On("GetByID", mock.Anything, prID).Return(createdPR, nil).Once()
+
 		result, err := service.CreatePR(context.Background(), prID, title, authorID)
 
 		require.NoError(t, err)
@@ -202,9 +223,9 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 
 func TestPullRequestService_MergePR(t *testing.T) {
 	t.Run("успешный merge PR", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -243,9 +264,9 @@ func TestPullRequestService_MergePR(t *testing.T) {
 	})
 
 	t.Run("идемпотентность: PR уже в статусе MERGED", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -271,9 +292,9 @@ func TestPullRequestService_MergePR(t *testing.T) {
 	})
 
 	t.Run("ошибка: PR не найден", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -292,9 +313,9 @@ func TestPullRequestService_MergePR(t *testing.T) {
 
 func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	t.Run("успешное переназначение ревьювера", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -313,11 +334,11 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 		}
 
 		oldReviewer := &domain.User{
-			ID:       oldReviewerID,
-			Username: "Bob",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        oldReviewerID,
+			Username:  "Bob",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -368,9 +389,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	})
 
 	t.Run("ошибка: PR не найден", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -388,9 +409,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	})
 
 	t.Run("ошибка: PR уже в статусе MERGED", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -418,9 +439,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	})
 
 	t.Run("ошибка: ревьювер не назначен на PR", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -447,9 +468,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	})
 
 	t.Run("ошибка: нет доступных кандидатов для замены", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 
@@ -467,11 +488,11 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 		}
 
 		oldReviewer := &domain.User{
-			ID:       oldReviewerID,
-			Username: "Bob",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        oldReviewerID,
+			Username:  "Bob",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -505,9 +526,9 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 	})
 
 	t.Run("ошибка: старый ревьювер не найден", func(t *testing.T) {
-		mockPRRepo := new(MockPullRequestRepository)
-		mockUserRepo := new(MockUserRepository)
-		mockTeamRepo := new(MockTeamRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockTeamRepo := new(mocks.MockTeamRepository)
 
 		service := NewPullRequestService(mockPRRepo, mockUserRepo, mockTeamRepo)
 

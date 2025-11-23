@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
+	"github.com/bagdasarian/avito-pr-reviewer/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -14,27 +15,27 @@ import (
 
 func TestUserService_SetIsActive(t *testing.T) {
 	t.Run("успешная установка активности", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
 		userID := "u1"
 		user := &domain.User{
-			ID:       userID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        userID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
 		updatedUser := &domain.User{
-			ID:       userID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: false,
+			ID:        userID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  false,
 			CreatedAt: user.CreatedAt,
 		}
 
@@ -53,8 +54,8 @@ func TestUserService_SetIsActive(t *testing.T) {
 	})
 
 	t.Run("ошибка: пользователь не найден", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
@@ -72,18 +73,18 @@ func TestUserService_SetIsActive(t *testing.T) {
 	})
 
 	t.Run("ошибка при обновлении", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
 		userID := "u1"
 		user := &domain.User{
-			ID:       userID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        userID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -101,18 +102,18 @@ func TestUserService_SetIsActive(t *testing.T) {
 
 func TestUserService_GetReviewPRs(t *testing.T) {
 	t.Run("успешное получение PR для ревью", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
 		userID := "u1"
 		user := &domain.User{
-			ID:       userID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        userID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -145,18 +146,18 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 	})
 
 	t.Run("успешное получение пустого списка PR", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
 		userID := "u1"
 		user := &domain.User{
-			ID:       userID,
-			Username: "Alice",
-			TeamID:   1,
-			TeamName: "backend",
-			IsActive: true,
+			ID:        userID,
+			Username:  "Alice",
+			TeamID:    1,
+			TeamName:  "backend",
+			IsActive:  true,
 			CreatedAt: time.Now(),
 		}
 
@@ -173,8 +174,8 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 	})
 
 	t.Run("ошибка: пользователь не найден", func(t *testing.T) {
-		mockUserRepo := new(MockUserRepository)
-		mockPRRepo := new(MockPullRequestRepository)
+		mockUserRepo := new(mocks.MockUserRepository)
+		mockPRRepo := new(mocks.MockPullRequestRepository)
 
 		service := NewUserService(mockUserRepo, mockPRRepo)
 
