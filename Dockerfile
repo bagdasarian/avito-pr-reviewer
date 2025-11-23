@@ -3,8 +3,12 @@ FROM golang:1.25.4-alpine AS builder
 
 WORKDIR /app
 
-# Копируем go mod файлы
-COPY go.mod go.sum ./
+# Копируем go mod файлы (go.sum может отсутствовать, это нормально)
+COPY go.mod ./
+# Копируем go.sum если он существует (опционально)
+COPY go.sum* ./
+
+# Загружаем зависимости
 RUN go mod download
 
 # Копируем исходный код
@@ -22,9 +26,6 @@ WORKDIR /root/
 
 # Копируем бинарник из стадии сборки
 COPY --from=builder /app/app .
-
-# Копируем .env файл (если нужен)
-# COPY --from=builder /app/.env .env
 
 EXPOSE 8080
 
