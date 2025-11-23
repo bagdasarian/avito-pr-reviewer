@@ -119,4 +119,3 @@ func (m *MockPullRequestRepository) ReplaceReviewer(prID string, oldReviewerID s
 	args := m.Called(prID, oldReviewerID, newReviewerID)
 	return args.Error(0)
 }
-

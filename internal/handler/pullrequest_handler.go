@@ -65,4 +65,3 @@ func (h *Handler) ReassignReviewer(w http.ResponseWriter, r *http.Request) {
 		ReplacedBy: newReviewerID,
 	})
 }
-

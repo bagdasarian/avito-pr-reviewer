@@ -101,3 +101,18 @@ type GetReviewPRsResponse struct {
 	PullRequests []PullRequestShortResponse `json:"pull_requests"`
 }
 
+type ReviewerStatResponse struct {
+	UserID          string `json:"user_id"`
+	Username        string `json:"username"`
+	AssignmentCount int    `json:"assignment_count"`
+}
+
+type PRStatusStatResponse struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+type StatsResponse struct {
+	ReviewerStats []ReviewerStatResponse `json:"reviewer_stats"`
+	PRStats       []PRStatusStatResponse `json:"pr_stats"`
+}

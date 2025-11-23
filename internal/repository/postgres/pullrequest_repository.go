@@ -21,7 +21,6 @@ func NewPullRequestRepository(db *sql.DB) *pullRequestRepository {
 
 // prStringIDToInt конвертирует строковый ID PR (например "pr-1001") в числовой
 func prStringIDToInt(stringID string) (int, error) {
-	// Убираем префикс "pr-" если есть
 	idStr := strings.TrimPrefix(stringID, "pr-")
 	return strconv.Atoi(idStr)
 }
@@ -44,13 +43,11 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return err
 	}
 
-	// Получаем числовой ID автора
 	authorDBID, err := stringIDToInt(pr.AuthorID)
 	if err != nil {
 		return errors.New("invalid author ID")
 	}
 
-	// Проверяем существование автора
 	var authorExists bool
 	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", authorDBID).Scan(&authorExists)
 	if err != nil {
@@ -60,13 +57,11 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return errors.New("author not found")
 	}
 
-	// Парсим указанный ID из pr.ID (например "pr-1003" -> 1003)
 	prDBID, err := prStringIDToInt(pr.ID)
 	if err != nil {
 		return errors.New("invalid pull request ID")
 	}
 
-	// Создаем PR с указанным ID (updated_at не устанавливаем при создании, остается NULL)
 	query := `
 		INSERT INTO pull_requests (id, title, author_id, status_id, created_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -88,7 +83,6 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return err
 	}
 
-	// Обновляем последовательность, чтобы следующий автоинкремент был больше текущего ID
 	_, err = tx.Exec(`
 		SELECT setval('pull_requests_id_seq', GREATEST((SELECT MAX(id) FROM pull_requests), $1))
 	`, prID)
@@ -96,16 +90,12 @@ func (r *pullRequestRepository) Create(pr *domain.PullRequest) error {
 		return err
 	}
 
-	// ID уже правильный (pr.ID содержит исходный "pr-1003", не перезаписываем)
-
-	// Добавляем ревьюверов
 	for _, reviewerID := range pr.AssignedReviewers {
 		reviewerDBID, err := stringIDToInt(reviewerID)
 		if err != nil {
 			return errors.New("invalid reviewer ID")
 		}
 
-		// Проверяем существование ревьювера
 		var reviewerExists bool
 		err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", reviewerDBID).Scan(&reviewerExists)
 		if err != nil {
@@ -169,14 +159,12 @@ func (r *pullRequestRepository) GetByID(id string) (*domain.PullRequest, error) 
 	pr.Status = domain.Status(statusName)
 	pr.CreatedAt = createdAt
 
-	// Получаем ревьюверов
 	reviewers, err := r.GetReviewersByPRID(id)
 	if err != nil {
 		return nil, err
 	}
 	pr.AssignedReviewers = reviewers
 
-	// Если статус MERGED и updated_at установлен, используем его как mergedAt
 	if pr.Status == domain.StatusMerged && updatedAt.Valid {
 		pr.MergedAt = &updatedAt.Time
 	}
@@ -196,7 +184,6 @@ func (r *pullRequestRepository) UpdateStatus(id string, status domain.Status, me
 		return errors.New("invalid pull request ID")
 	}
 
-	// Получаем ID статуса
 	var statusID int
 	err = tx.QueryRow("SELECT id FROM statuses WHERE name = $1", string(status)).Scan(&statusID)
 	if err != nil {
@@ -244,7 +231,6 @@ func (r *pullRequestRepository) AddReviewer(prID string, reviewerID string) erro
 		return errors.New("invalid reviewer ID")
 	}
 
-	// Проверяем существование PR
 	var prExists bool
 	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM pull_requests WHERE id = $1)", prDBID).Scan(&prExists)
 	if err != nil {
@@ -254,7 +240,6 @@ func (r *pullRequestRepository) AddReviewer(prID string, reviewerID string) erro
 		return errors.New("pull request not found")
 	}
 
-	// Проверяем существование ревьювера
 	var reviewerExists bool
 	err = tx.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", reviewerDBID).Scan(&reviewerExists)
 	if err != nil {
@@ -416,7 +401,6 @@ func (r *pullRequestRepository) ReplaceReviewer(prID string, oldReviewerID strin
 		return errors.New("invalid new reviewer ID")
 	}
 
-	// Проверяем, что старый ревьювер назначен
 	var exists bool
 	err = tx.QueryRow(
 		"SELECT EXISTS(SELECT 1 FROM pull_request_reviewers WHERE pull_request_id = $1 AND reviewer_id = $2)",
@@ -431,7 +415,6 @@ func (r *pullRequestRepository) ReplaceReviewer(prID string, oldReviewerID strin
 		return errors.New("reviewer is not assigned to this PR")
 	}
 
-	// Заменяем ревьювера
 	_, err = tx.Exec(
 		"UPDATE pull_request_reviewers SET reviewer_id = $1 WHERE pull_request_id = $2 AND reviewer_id = $3",
 		newReviewerDBID,

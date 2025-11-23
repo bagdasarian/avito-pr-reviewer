@@ -85,4 +85,3 @@ func domainPRShortsToHTTP(prs []*domain.PullRequestShort) []PullRequestShortResp
 	}
 	return result
 }
-

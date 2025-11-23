@@ -21,7 +21,6 @@ func NewUserRepository(db *sql.DB) *userRepository {
 
 // stringIDToInt конвертирует строковый ID (например "u1") в числовой
 func stringIDToInt(stringID string) (int, error) {
-	// Убираем префикс "u" если есть
 	idStr := strings.TrimPrefix(stringID, "u")
 	return strconv.Atoi(idStr)
 }
@@ -90,7 +89,6 @@ func (r *userRepository) Create(user *domain.User) error {
 		return err
 	}
 
-	// Конвертируем числовой ID обратно в строковый
 	user.ID = intToStringID(dbID)
 
 	return nil

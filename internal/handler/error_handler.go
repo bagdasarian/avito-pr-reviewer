@@ -45,4 +45,3 @@ func getStatusCode(errorCode string) int {
 		return http.StatusInternalServerError
 	}
 }
-

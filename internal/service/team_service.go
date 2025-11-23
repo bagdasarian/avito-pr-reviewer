@@ -9,4 +9,3 @@ type TeamService interface {
 	// GetTeam получает команду с участниками по имени
 	GetTeam(name string) (*domain.Team, error)
 }
-

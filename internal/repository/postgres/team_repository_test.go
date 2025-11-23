@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/bagdasarian/avito-pr-reviewer/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,6 @@ func setupTeamRepo(t *testing.T) (*teamRepository, sqlmock.Sqlmock) {
 // Использует ON CONFLICT для upsert команды
 func TestTeamRepository_Create(t *testing.T) {
 	t.Run("успешное создание новой команды с участниками", func(t *testing.T) {
-		// Создаем мок БД
 		repo, mock := setupTeamRepo(t)
 
 		now := time.Now()
@@ -35,40 +34,26 @@ func TestTeamRepository_Create(t *testing.T) {
 			},
 		}
 
-		// Ожидание 1: Начало транзакции
 		mock.ExpectBegin()
 
-		// Ожидание 2: Создание команды (INSERT с ON CONFLICT)
-		// При создании новой команды updated_at должен быть NULL
 		teamRows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
-			AddRow(1, now, nil) // updated_at = nil для новой команды
+			AddRow(1, now, nil)
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Team Alpha", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
 
-		// Ожидание 3: Создание первого пользователя через UserRepository.Create()
-		// UserRepository.Create() с ID "u1" попытается обновить, но если не найдет - создаст нового
-		// Для простоты теста предположим, что пользователь уже существует и будет обновлен
-		user1UpdateRows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(1, "user1", 1, true, sqlmock.AnyArg()).
-			WillReturnRows(user1UpdateRows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		// Ожидание 4: Создание второго пользователя
-		user2UpdateRows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(2, "user2", 1, true, sqlmock.AnyArg()).
-			WillReturnRows(user2UpdateRows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		// Ожидание 5: Коммит транзакции
 		mock.ExpectCommit()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.NoError(t, err)
 		assert.Equal(t, 1, team.ID)
 		assert.Equal(t, "Team Alpha", team.Name)
@@ -80,7 +65,6 @@ func TestTeamRepository_Create(t *testing.T) {
 	})
 
 	t.Run("успешное обновление существующей команды", func(t *testing.T) {
-		// ON CONFLICT срабатывает, команда обновляется
 		repo, mock := setupTeamRepo(t)
 
 		now := time.Now()
@@ -94,26 +78,20 @@ func TestTeamRepository_Create(t *testing.T) {
 
 		mock.ExpectBegin()
 
-		// При обновлении существующей команды updated_at устанавливается
 		teamRows := sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
-			AddRow(1, now.Add(-7*24*time.Hour), updatedAt) // created_at из прошлого, updated_at обновлен
+			AddRow(1, now.Add(-7*24*time.Hour), updatedAt)
 		mock.ExpectQuery("INSERT INTO teams").
 			WithArgs("Existing Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
 
-		// Обновление пользователя
-		userUpdateRows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(1, "user1", 1, true, sqlmock.AnyArg()).
-			WillReturnRows(userUpdateRows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.NoError(t, err)
 		assert.Equal(t, 1, team.ID)
 		assert.NotNil(t, team.UpdatedAt, "updated_at должен быть установлен при обновлении")
@@ -128,7 +106,7 @@ func TestTeamRepository_Create(t *testing.T) {
 		now := time.Now()
 		team := &domain.Team{
 			Name:    "Empty Team",
-			Members: []domain.TeamMember{}, // Пустой список участников
+			Members: []domain.TeamMember{},
 		}
 
 		mock.ExpectBegin()
@@ -139,13 +117,10 @@ func TestTeamRepository_Create(t *testing.T) {
 			WithArgs("Empty Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
 
-		// Нет запросов для пользователей, так как список пустой
 		mock.ExpectCommit()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.NoError(t, err)
 		assert.Equal(t, 2, team.ID)
 
@@ -174,31 +149,22 @@ func TestTeamRepository_Create(t *testing.T) {
 			WithArgs("Large Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
 
-		// Три пользователя
-		user1Rows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(1, "user1", 3, true, sqlmock.AnyArg()).
-			WillReturnRows(user1Rows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		user2Rows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(2, "user2", 3, false, sqlmock.AnyArg()).
-			WillReturnRows(user2Rows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
-		user3Rows := sqlmock.NewRows([]string{"created_at", "updated_at"}).
-			AddRow(now.Add(-24*time.Hour), now)
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(3, "user3", 3, true, sqlmock.AnyArg()).
-			WillReturnRows(user3Rows)
+			WillReturnResult(sqlmock.NewResult(0, 1))
 
 		mock.ExpectCommit()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.NoError(t, err)
 		assert.Equal(t, 3, team.ID)
 		assert.Len(t, team.Members, 3)
@@ -224,10 +190,8 @@ func TestTeamRepository_Create(t *testing.T) {
 
 		mock.ExpectRollback()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.Error(t, err)
 		assert.Equal(t, expectedError, err)
 
@@ -254,23 +218,19 @@ func TestTeamRepository_Create(t *testing.T) {
 			WithArgs("Team", sqlmock.AnyArg()).
 			WillReturnRows(teamRows)
 
-		// UPDATE не находит пользователя (sql.ErrNoRows), затем вызывается INSERT
-		mock.ExpectQuery("UPDATE users").
+		mock.ExpectExec("UPDATE users").
 			WithArgs(1, "user1", 1, true, sqlmock.AnyArg()).
-			WillReturnError(sql.ErrNoRows)
+			WillReturnResult(sqlmock.NewResult(0, 0))
 
-		// Ошибка при INSERT нового пользователя
 		expectedError := errors.New("user creation failed")
-		mock.ExpectQuery("INSERT INTO users").
-			WithArgs("user1", 1, true, sqlmock.AnyArg()).
+		mock.ExpectExec("INSERT INTO users").
+			WithArgs(1, "user1", 1, true, sqlmock.AnyArg()).
 			WillReturnError(expectedError)
 
 		mock.ExpectRollback()
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.Error(t, err)
 		assert.Equal(t, expectedError, err)
 
@@ -298,10 +258,8 @@ func TestTeamRepository_Create(t *testing.T) {
 		expectedError := errors.New("commit failed")
 		mock.ExpectCommit().WillReturnError(expectedError)
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.Error(t, err)
 		assert.Equal(t, expectedError, err)
 
@@ -320,10 +278,8 @@ func TestTeamRepository_Create(t *testing.T) {
 		expectedError := errors.New("connection failed")
 		mock.ExpectBegin().WillReturnError(expectedError)
 
-		// Выполнение
 		err := repo.Create(team)
 
-		// Проверки
 		require.Error(t, err)
 		assert.Equal(t, expectedError, err)
 
@@ -340,14 +296,12 @@ func TestTeamRepository_GetByName(t *testing.T) {
 		createdAt := time.Date(2024, 1, 10, 12, 0, 0, 0, time.UTC)
 		updatedAt := time.Date(2024, 1, 15, 10, 0, 0, 0, time.UTC)
 
-		// Ожидание 1: Получение команды
 		teamRows := sqlmock.NewRows([]string{"id", "name", "created_at", "updated_at"}).
 			AddRow(1, "Team Alpha", createdAt, updatedAt)
 		mock.ExpectQuery("SELECT id, name, created_at, updated_at").
 			WithArgs("Team Alpha").
 			WillReturnRows(teamRows)
 
-		// Ожидание 2: Получение участников через UserRepository.GetByTeamID()
 		userRows := sqlmock.NewRows([]string{"id", "name", "team_id", "name", "is_active", "created_at", "updated_at"}).
 			AddRow(1, "user1", 1, "Team Alpha", true, createdAt, nil).
 			AddRow(2, "user2", 1, "Team Alpha", false, createdAt, nil)
@@ -355,10 +309,8 @@ func TestTeamRepository_GetByName(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(userRows)
 
-		// Выполнение
 		team, err := repo.GetByName("Team Alpha")
 
-		// Проверки
 		require.NoError(t, err)
 		assert.NotNil(t, team)
 		assert.Equal(t, 1, team.ID)
@@ -386,16 +338,13 @@ func TestTeamRepository_GetByName(t *testing.T) {
 			WithArgs("Empty Team").
 			WillReturnRows(teamRows)
 
-		// Нет участников
 		userRows := sqlmock.NewRows([]string{"id", "name", "team_id", "name", "is_active", "created_at", "updated_at"})
 		mock.ExpectQuery("SELECT u.id, u.name, u.team_id, t.name, u.is_active, u.created_at, u.updated_at").
 			WithArgs(1).
 			WillReturnRows(userRows)
 
-		// Выполнение
 		team, err := repo.GetByName("Empty Team")
 
-		// Проверки
 		require.NoError(t, err)
 		assert.NotNil(t, team)
 		assert.Equal(t, 1, team.ID)
@@ -412,10 +361,8 @@ func TestTeamRepository_GetByName(t *testing.T) {
 			WithArgs("Non-existent Team").
 			WillReturnError(sql.ErrNoRows)
 
-		// Выполнение
 		team, err := repo.GetByName("Non-existent Team")
 
-		// Проверки
 		require.Error(t, err)
 		assert.Nil(t, team)
 		assert.Equal(t, "team not found", err.Error())
@@ -440,10 +387,8 @@ func TestTeamRepository_GetByName(t *testing.T) {
 			WithArgs(1).
 			WillReturnRows(userRows)
 
-		// Выполнение
 		team, err := repo.GetByName("New Team")
 
-		// Проверки
 		require.NoError(t, err)
 		assert.NotNil(t, team)
 		assert.Nil(t, team.UpdatedAt, "updated_at должен быть nil, если не установлен")
@@ -452,4 +397,3 @@ func TestTeamRepository_GetByName(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
-

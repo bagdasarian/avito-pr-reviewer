@@ -183,4 +183,3 @@ func TestUserService_GetReviewPRs(t *testing.T) {
 		mockUserRepo.AssertExpectations(t)
 	})
 }
-

@@ -27,12 +27,14 @@ func main() {
 	teamRepo := postgres.NewTeamRepository(database)
 	userRepo := postgres.NewUserRepository(database)
 	pullRequestRepo := postgres.NewPullRequestRepository(database)
+	statsRepo := postgres.NewStatsRepository(database)
 
 	teamService := service.NewTeamService(teamRepo, userRepo)
 	userService := service.NewUserService(userRepo, pullRequestRepo)
 	pullRequestService := service.NewPullRequestService(pullRequestRepo, userRepo, teamRepo)
+	statsService := service.NewStatsService(statsRepo)
 
-	h := handler.NewHandler(teamService, userService, pullRequestService)
+	h := handler.NewHandler(teamService, userService, pullRequestService, statsService)
 	srv := server.NewServer(h, ":8080")
 
 	go func() {

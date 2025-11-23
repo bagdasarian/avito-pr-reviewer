@@ -9,4 +9,3 @@ type UserService interface {
 	// GetReviewPRs получает список PR'ов, где пользователь назначен ревьювером
 	GetReviewPRs(userID string) ([]*domain.PullRequestShort, error)
 }
-

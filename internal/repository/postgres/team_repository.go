@@ -46,11 +46,9 @@ func (r *teamRepository) Create(team *domain.Team) error {
 	}
 	team.ID = teamID
 
-	// Создаем/обновляем пользователей в той же транзакции
 	for _, member := range team.Members {
 		dbID, err := stringIDToInt(member.UserID)
 		if err != nil {
-			// Если ID невалидный, создаем без ID (автоинкремент)
 			query := `
 				INSERT INTO users (name, team_id, is_active, created_at)
 				VALUES ($1, $2, $3, $4)
@@ -97,7 +95,6 @@ func (r *teamRepository) Create(team *domain.Team) error {
 }
 
 func (r *teamRepository) GetByName(name string) (*domain.Team, error) {
-	// Получаем команду
 	query := `
 		SELECT id, name, created_at, updated_at
 		FROM teams
@@ -126,7 +123,6 @@ func (r *teamRepository) GetByName(name string) (*domain.Team, error) {
 		return nil, err
 	}
 
-	// Получаем участников команды
 	userRepo := NewUserRepository(r.db)
 	users, err := userRepo.GetByTeamID(team.ID)
 	if err != nil {

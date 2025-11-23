@@ -172,7 +172,7 @@ func TestPRStringIDToInt(t *testing.T) {
 			name:    "negative number (parsed but may be invalid in context)",
 			input:   "pr--1",
 			want:    -1,
-			wantErr: false, // strconv.Atoi успешно парсит отрицательные числа
+			wantErr: false,
 		},
 		{
 			name:    "invalid ID - with spaces",
@@ -184,7 +184,7 @@ func TestPRStringIDToInt(t *testing.T) {
 			name:    "wrong prefix - will fail to parse",
 			input:   "u-1001",
 			want:    0,
-			wantErr: true, // "u-1001" без префикса "pr-" остается "u-1001", что не парсится как число
+			wantErr: true,
 		},
 	}
 

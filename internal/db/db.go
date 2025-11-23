@@ -31,7 +31,6 @@ func NewPostgres(cfg *config.Config) (*sql.DB, error) {
 	return db, nil
 }
 
-
 func MustLoad(cfg *config.Config) *sql.DB {
 	db, err := NewPostgres(cfg)
 	if err != nil {

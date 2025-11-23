@@ -50,4 +50,3 @@ func (h *Handler) GetReviewPRs(w http.ResponseWriter, r *http.Request) {
 		PullRequests: domainPRShortsToHTTP(prs),
 	})
 }
-

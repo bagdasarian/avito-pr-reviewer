@@ -49,22 +49,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			{ID: "u3", Username: "Charlie", TeamID: 1, TeamName: "backend", IsActive: true},
 		}
 
-		createdPR := &domain.PullRequest{
-			ID:                prID,
-			Title:             title,
-			AuthorID:          authorID,
-			Status:            domain.StatusOpen,
-			AssignedReviewers: []string{"u2", "u3"},
-			CreatedAt:         time.Now(),
-			MergedAt:          nil,
-		}
-
 		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
 		mockUserRepo.On("GetByID", authorID).Return(author, nil).Once()
 		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
 		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
 		mockPRRepo.On("Create", mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
-		mockPRRepo.On("GetByID", prID).Return(createdPR, nil).Once()
 
 		result, err := service.CreatePR(prID, title, authorID)
 
@@ -193,22 +182,11 @@ func TestPullRequestService_CreatePR(t *testing.T) {
 			{ID: "u1", Username: "Alice", TeamID: 1, TeamName: "backend", IsActive: true},
 		}
 
-		createdPR := &domain.PullRequest{
-			ID:                prID,
-			Title:             title,
-			AuthorID:          authorID,
-			Status:            domain.StatusOpen,
-			AssignedReviewers: []string{},
-			CreatedAt:         time.Now(),
-			MergedAt:          nil,
-		}
-
 		mockPRRepo.On("GetByID", prID).Return(nil, errors.New("pull request not found")).Once()
 		mockUserRepo.On("GetByID", authorID).Return(author, nil).Once()
 		mockTeamRepo.On("GetByName", "backend").Return(team, nil).Once()
 		mockUserRepo.On("GetByTeamID", 1).Return(teamMembers, nil).Once()
 		mockPRRepo.On("Create", mock.AnythingOfType("*domain.PullRequest")).Return(nil).Once()
-		mockPRRepo.On("GetByID", prID).Return(createdPR, nil).Once()
 
 		result, err := service.CreatePR(prID, title, authorID)
 
@@ -558,4 +536,3 @@ func TestPullRequestService_ReassignReviewer(t *testing.T) {
 		mockUserRepo.AssertExpectations(t)
 	})
 }
-

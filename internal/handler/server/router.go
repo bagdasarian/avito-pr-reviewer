@@ -14,4 +14,5 @@ func SetupRoutes(mux *http.ServeMux, h *handler.Handler) {
 	mux.HandleFunc("POST /pullRequest/create", h.CreatePR)
 	mux.HandleFunc("POST /pullRequest/merge", h.MergePR)
 	mux.HandleFunc("POST /pullRequest/reassign", h.ReassignReviewer)
+	mux.HandleFunc("GET /stats", h.GetStats)
 }
