@@ -1,4 +1,4 @@
-module github.com/bagdasarian/avito-pr-reviewer
+module github.com/bagdasarian/pr-reviewer
 
 go 1.25.4
 
